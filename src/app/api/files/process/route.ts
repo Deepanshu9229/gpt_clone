@@ -4,7 +4,7 @@ import { File } from '@/models/File'
 import mammoth from 'mammoth'
 import pdfParse from 'pdf-parse'
 import { auth } from '@clerk/nextjs/server'
-export const dynamic = "force-dynamic";
+
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -15,11 +15,12 @@ export async function POST(request: Request) {
   const { fileUrl, fileName, fileType, fileSize } = await request.json()
 
   try {
-    const { userId } = await auth();
-    await connectDB();
+    const session = await auth();
+    const userId = session?.userId || 'demo-user'
+    await connectDB()
 
-    const fileResponse = await fetch(fileUrl);
-    const fileBuffer = Buffer.from(await fileResponse.arrayBuffer());
+    const fileResponse = await fetch(fileUrl)
+    const fileBuffer = Buffer.from(await fileResponse.arrayBuffer())
 
     let extractedText = ''
     let cloudinaryUrl = ''
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
     }
 
     const fileRecord = new File({
-      userId: userId || 'demo-user',
+      userId,
       fileName,
       originalName: fileName,
       fileType,
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
       uploadcareUrl: fileUrl,
       cloudinaryUrl,
       extractedText,
+      createdAt: new Date(),
     })
 
     await fileRecord.save()

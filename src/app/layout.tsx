@@ -1,6 +1,6 @@
 import type React from "react"
 import { ClerkProvider } from "@clerk/nextjs"
-import "../src/app/globals.css"
+import "./globals.css"
 
 export const metadata = {
   title: 'Next.js',
@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
       <html lang="en" className="h-full">
         <head>
           <script

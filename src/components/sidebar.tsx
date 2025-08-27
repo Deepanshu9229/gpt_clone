@@ -5,7 +5,7 @@ import { ScrollArea } from "../components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "../components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../components/ui/dropdown-menu"
 import { Plus, PanelLeft, Settings, LogOut, MessageSquare } from "lucide-react"
-import { UserButton, useUser } from "@clerk/nextjs"
+import { UserButton, useUser, SignInButton, SignUpButton } from "@clerk/nextjs"
 import { useChat } from "./chat-provider"
 import { cn } from "../lib/utils"
 
@@ -80,10 +80,25 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       {/* User Profile */}
       <div className="p-4 border-t border-sidebar-border">
         <div className="flex items-center gap-3">
-          <UserButton appearance={{ elements: { avatarBox: "h-8 w-8" } }} afterSignOutUrl="/login" />
+          {isSignedIn ? (
+            <UserButton appearance={{ elements: { avatarBox: "h-8 w-8" } }} afterSignOutUrl="/" />
+          ) : (
+            <div className="flex gap-2">
+              <SignInButton mode="modal">
+                <Button variant="ghost" size="sm" className="text-xs">
+                  Sign in
+                </Button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <Button variant="default" size="sm" className="text-xs">
+                  Sign up
+                </Button>
+              </SignUpButton>
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium">{isSignedIn ? (user?.firstName || 'User') : 'Guest'}</div>
-            <div className="text-xs text-sidebar-foreground/60">{isSignedIn ? (user?.emailAddresses?.[0]?.emailAddress || '') : 'Click avatar to sign in'}</div>
+            <div className="text-xs text-sidebar-foreground/60">{isSignedIn ? (user?.emailAddresses?.[0]?.emailAddress || '') : 'Sign in to save chats'}</div>
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, type ReactNode } from "react"
+import { useUser } from "@clerk/nextjs"
 
 interface Message {
   id: string
@@ -16,12 +17,6 @@ interface Conversation {
   createdAt: Date
 }
 
-interface User {
-  id: string
-  name: string
-  email: string
-}
-
 interface ChatContextType {
   conversations: Conversation[]
   currentConversation: Conversation | null
@@ -30,19 +25,16 @@ interface ChatContextType {
   selectConversation: (id: string) => void
   updateMessage: (messageId: string, newContent: string) => void
   deleteConversation: (id: string) => void
-  user: User | null
-  login: (user: User) => void
-  logout: () => void
   isLoading: boolean
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined)
 
 export function ChatProvider({ children }: { children: ReactNode }) {
+  const { user } = useUser()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [user, setUser] = useState<User | null>(null)
 
   const createNewConversation = () => {
     const local: Conversation = {
@@ -182,9 +174,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  const login = (u: User) => setUser(u)
-  const logout = () => setUser(null)
-
   return (
     <ChatContext.Provider
       value={{
@@ -195,9 +184,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         selectConversation,
         updateMessage,
         deleteConversation,
-        user,
-        login,
-        logout,
         isLoading,
       }}
     >

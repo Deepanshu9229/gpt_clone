@@ -5,6 +5,7 @@ import { ScrollArea } from "../components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "../components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../components/ui/dropdown-menu"
 import { Plus, PanelLeft, Settings, LogOut, MessageSquare } from "lucide-react"
+import { UserButton, useUser } from "@clerk/nextjs"
 import { useChat } from "./chat-provider"
 import { cn } from "../lib/utils"
 
@@ -14,7 +15,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onToggle }: SidebarProps) {
-  const { conversations, currentConversation, createNewConversation, selectConversation, deleteConversation, user, login, logout } = useChat()
+  const { conversations, currentConversation, createNewConversation, selectConversation, deleteConversation } = useChat()
+  const { user, isSignedIn } = useUser()
 
   return (
     <div
@@ -77,50 +79,13 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
       {/* User Profile */}
       <div className="p-4 border-t border-sidebar-border">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="w-full justify-start p-2 text-sidebar-foreground hover:bg-sidebar-accent"
-              onClick={() => {
-                if (!user) {
-                  window.location.href = "/signup"
-                }
-              }}
-            >
-              <Avatar className="h-8 w-8 mr-3">
-                <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground">{user ? user.name[0]?.toUpperCase() : 'U'}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 text-left">
-                <div className="text-sm font-medium">{user ? user.name : 'Guest'}</div>
-                <div className="text-xs text-sidebar-foreground/60">{user ? user.email : 'Click to sign up'}</div>
-              </div>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            {!user ? (
-              <DropdownMenuItem
-                onClick={() => {
-                  // minimal: first click behaves like signup
-                  login({ id: Date.now().toString(), name: 'User', email: 'user@example.com' })
-                }}
-              >
-                Sign up / Log in
-              </DropdownMenuItem>
-            ) : (
-              <>
-                <DropdownMenuItem>
-                  <Settings className="h-4 w-4 mr-2" />
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { logout(); window.location.href = "/login" }}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Log out
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-3">
+          <UserButton appearance={{ elements: { avatarBox: "h-8 w-8" } }} afterSignOutUrl="/login" />
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium">{isSignedIn ? (user?.firstName || 'User') : 'Guest'}</div>
+            <div className="text-xs text-sidebar-foreground/60">{isSignedIn ? (user?.emailAddresses?.[0]?.emailAddress || '') : 'Click avatar to sign in'}</div>
+          </div>
+        </div>
       </div>
     </div>
   )

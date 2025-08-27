@@ -1,4 +1,5 @@
 import type React from "react"
+import { ClerkProvider } from "@clerk/nextjs"
 import "../src/app/globals.css"
 
 export const metadata = {
@@ -12,8 +13,17 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="h-full">
-      <body className="h-full overflow-hidden bg-background text-foreground">{children}</body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" className="h-full">
+        <head>
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `UPLOADCARE_PUBLIC_KEY = '${process.env.NEXT_PUBLIC_UPLOADCARE_PUBLIC_KEY || ''}';`,
+            }}
+          />
+        </head>
+        <body className="h-full overflow-hidden bg-background text-foreground">{children}</body>
+      </html>
+    </ClerkProvider>
   )
 }

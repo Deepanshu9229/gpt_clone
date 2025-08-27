@@ -11,6 +11,7 @@ import { PanelLeft, Send, Paperclip, ChevronDown } from "lucide-react"
 import { useChat } from "./chat-provider"
 import { MessageBubble } from "./message-bubble"
 import { cn } from "../lib/utils"
+import { FileUpload } from "./FileUpload"
 
 interface ChatAreaProps {
   sidebarOpen: boolean
@@ -22,6 +23,7 @@ export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
   const [selectedModel, setSelectedModel] = useState("GPT-4")
   const { currentConversation, addMessage, isLoading } = useChat()
   const bottomRef = useRef<HTMLDivElement | null>(null)
+  const [attachedFiles, setAttachedFiles] = useState<any[]>([])
 
   const handleSend = () => {
     if (input.trim()) {
@@ -112,13 +114,11 @@ export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
         <div className="max-w-4xl mx-auto">
           <div className="relative">
             <div className="flex items-end gap-2 bg-input rounded-lg border border-border p-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground hover:bg-muted"
-              >
-                <Paperclip className="h-5 w-5" />
-              </Button>
+              <FileUpload
+                attachedFiles={attachedFiles}
+                onFileAttach={(file) => setAttachedFiles((prev) => [...prev, file])}
+                onFileRemove={(fileId) => setAttachedFiles((prev) => prev.filter((f) => f.id !== fileId))}
+              />
 
               <Textarea
                 value={input}

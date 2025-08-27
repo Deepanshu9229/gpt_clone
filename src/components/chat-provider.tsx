@@ -45,14 +45,32 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
 
   const createNewConversation = () => {
-    const newConversation: Conversation = {
+    const local: Conversation = {
       id: Date.now().toString(),
       title: "New Chat",
       messages: [],
       createdAt: new Date(),
     }
-    setConversations((prev) => [newConversation, ...prev])
-    setCurrentConversation(newConversation)
+    // Optimistic create, then sync with DB
+    setConversations((prev) => [local, ...prev])
+    setCurrentConversation(local)
+    fetch('/api/conversations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: local.title, model: 'gpt-4' }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.conversation?.id) {
+          setConversations((prev) =>
+            prev.map((c) => (c.id === local.id ? { ...c, id: data.conversation.id } : c)),
+          )
+          setCurrentConversation((prev) => (prev ? { ...prev, id: data.conversation.id } : prev))
+        }
+      })
+      .catch(() => {
+        // leave optimistic state on failure
+      })
   }
 
   const addMessage = async (content: string, role: "user" | "assistant") => {

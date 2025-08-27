@@ -133,12 +133,8 @@ export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
                 onClick={handleSend}
                 disabled={!input.trim() || isLoading}
                 size="icon"
-                className={cn(
-                  "rounded-full",
-                  input.trim() && !isLoading
-                    ? "bg-accent hover:bg-accent/90 text-accent-foreground"
-                    : "bg-muted text-muted-foreground cursor-not-allowed",
-                )}
+                variant="default"
+                className="rounded-full"
               >
                 <Send className="h-4 w-4" />
               </Button>

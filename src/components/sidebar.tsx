@@ -100,15 +100,15 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                 {/* 3-dot menu for per-chat actions */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent flex-shrink-0"
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center size-9 rounded-md text-sm text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent flex-shrink-0 outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                      onPointerDown={(e) => e.stopPropagation()}
                       onClick={(e) => e.stopPropagation()}
                       title="Chat options"
                     >
                       <MoreVertical className="h-4 w-4" />
-                    </Button>
+                    </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-40" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenuItem

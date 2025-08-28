@@ -42,6 +42,15 @@ module.exports = {
           DEFAULT: "var(--card)",
           foreground: "var(--card-foreground)",
         },
+        // Add sidebar colors
+        sidebar: {
+          DEFAULT: "var(--background)",
+          foreground: "var(--foreground)",
+          primary: "var(--primary)",
+          "primary-foreground": "var(--primary-foreground)",
+          accent: "var(--accent)",
+          border: "var(--border)",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -52,4 +61,3 @@ module.exports = {
   },
   plugins: [],
 }
-

@@ -7,7 +7,7 @@ import { Button } from "../components/ui/button"
 import { Textarea } from "../components/ui/textarea"
 import { ScrollArea } from "../components/ui/scroll-area"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../components/ui/dropdown-menu"
-import { PanelLeft, Send, Paperclip, ChevronDown } from "lucide-react"
+import { PanelLeft, Send, Paperclip, ChevronDown, AlertCircle, RefreshCw, X } from "lucide-react"
 import { useChat } from "./chat-provider"
 import { MessageBubble } from "./message-bubble"
 import { cn } from "../lib/utils"
@@ -21,14 +21,26 @@ interface ChatAreaProps {
 export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
   const [input, setInput] = useState("")
   const [selectedModel, setSelectedModel] = useState("GPT-4")
-  const { currentConversation, addMessage, isLoading } = useChat()
+  const { 
+    currentConversation, 
+    addMessage, 
+    isLoading, 
+    error,
+    createNewConversation,
+    clearError
+  } = useChat()
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const [attachedFiles, setAttachedFiles] = useState<any[]>([])
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (input.trim()) {
-      addMessage(input.trim(), "user")
-      setInput("")
+      try {
+        await addMessage(input.trim(), "user", attachedFiles)
+        setInput("")
+        setAttachedFiles([])
+      } catch (error) {
+        console.error('Failed to send message:', error)
+      }
     }
   }
 
@@ -37,6 +49,19 @@ export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
       e.preventDefault()
       handleSend()
     }
+  }
+
+  const handleRetry = async () => {
+    try {
+      clearError()
+      await createNewConversation()
+    } catch (error) {
+      console.error('Failed to retry:', error)
+    }
+  }
+
+  const handleDismissError = () => {
+    clearError()
   }
 
   useEffect(() => {
@@ -68,6 +93,37 @@ export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
         </DropdownMenu>
       </div>
 
+      {/* Error Display */}
+      {error && (
+        <div className="p-4 bg-red-50 border-b border-red-200">
+          <div className="flex items-center justify-between gap-2 text-red-700">
+            <div className="flex items-center gap-2 flex-1">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <span className="text-sm">{error}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleRetry}
+                className="text-red-700 hover:bg-red-100"
+              >
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Retry
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleDismissError}
+                className="text-red-700 hover:bg-red-100"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 p-4">
         {currentConversation?.messages.length === 0 || !currentConversation ? (
@@ -75,6 +131,15 @@ export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
             <div className="text-center text-muted-foreground">
               <h2 className="text-2xl font-semibold mb-2">How can I help you today?</h2>
               <p>Start a conversation by typing a message below.</p>
+              {!currentConversation && (
+                <Button 
+                  onClick={createNewConversation} 
+                  className="mt-4"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Creating...' : 'Start New Chat'}
+                </Button>
+              )}
             </div>
           </div>
         ) : (
@@ -127,6 +192,7 @@ export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
                 placeholder="Message ChatGPT..."
                 className="flex-1 min-h-[24px] max-h-32 resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
                 rows={1}
+                disabled={isLoading}
               />
 
               <Button

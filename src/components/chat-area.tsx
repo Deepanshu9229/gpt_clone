@@ -1,16 +1,13 @@
 "use client"
 
-import type React from "react"
-
 import { useEffect, useRef, useState } from "react"
 import { Button } from "../components/ui/button"
 import { Textarea } from "../components/ui/textarea"
 import { ScrollArea } from "../components/ui/scroll-area"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../components/ui/dropdown-menu"
-import { PanelLeft, Send, Paperclip, ChevronDown, AlertCircle, RefreshCw, X } from "lucide-react"
+import { PanelLeft, Send, ChevronDown, AlertTriangle } from "lucide-react"
 import { useChat } from "./chat-provider"
 import { MessageBubble } from "./message-bubble"
-import { cn } from "../lib/utils"
 import { FileUpload } from "./FileUpload"
 
 interface ChatAreaProps {
@@ -26,18 +23,19 @@ export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
     addMessage, 
     isLoading, 
     error,
-    createNewConversation,
-    clearError
+    createNewConversation
   } = useChat()
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const [attachedFiles, setAttachedFiles] = useState<any[]>([])
 
   const handleSend = async () => {
-    if (input.trim()) {
+    if (input.trim() && !isLoading) {
+      const message = input.trim()
+      setInput("")
+      setAttachedFiles([])
+      
       try {
-        await addMessage(input.trim(), "user", attachedFiles)
-        setInput("")
-        setAttachedFiles([])
+        await addMessage(message, attachedFiles)
       } catch (error) {
         console.error('Failed to send message:', error)
       }
@@ -51,36 +49,23 @@ export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
     }
   }
 
-  const handleRetry = async () => {
-    try {
-      clearError()
-      await createNewConversation()
-    } catch (error) {
-      console.error('Failed to retry:', error)
-    }
-  }
-
-  const handleDismissError = () => {
-    clearError()
-  }
-
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [currentConversation?.messages.length, isLoading])
+  }, [currentConversation?.messages, isLoading])
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-background">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         {!sidebarOpen && (
-          <Button onClick={onToggleSidebar} variant="ghost" size="icon" className="text-foreground hover:bg-muted">
+          <Button onClick={onToggleSidebar} variant="ghost" size="icon">
             <PanelLeft className="h-5 w-5" />
           </Button>
         )}
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-2 text-foreground hover:bg-muted">
+            <Button variant="ghost" className="flex items-center gap-2">
               {selectedModel}
               <ChevronDown className="h-4 w-4" />
             </Button>
@@ -95,38 +80,17 @@ export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
 
       {/* Error Display */}
       {error && (
-        <div className="p-4 bg-red-50 border-b border-red-200">
-          <div className="flex items-center justify-between gap-2 text-red-700">
-            <div className="flex items-center gap-2 flex-1">
-              <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              <span className="text-sm">{error}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={handleRetry}
-                className="text-red-700 hover:bg-red-100"
-              >
-                <RefreshCw className="h-4 w-4 mr-1" />
-                Retry
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={handleDismissError}
-                className="text-red-700 hover:bg-red-100"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+        <div className="p-4 bg-destructive/10 border-b border-destructive/20">
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <span className="text-sm">{error}</span>
           </div>
         </div>
       )}
 
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 p-4">
-        {currentConversation?.messages.length === 0 || !currentConversation ? (
+        {!currentConversation || currentConversation.messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center text-muted-foreground">
               <h2 className="text-2xl font-semibold mb-2">How can I help you today?</h2>

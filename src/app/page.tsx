@@ -5,7 +5,7 @@ import { Sidebar } from "@/components/sidebar"
 import { ChatArea } from "@/components/chat-area"
 import { ChatProvider } from "@/components/chat-provider"
 
-export const dynamic = "force-dynamic"
+
 
 export default function Page() {
   const [sidebarOpen, setSidebarOpen] = useState(true)

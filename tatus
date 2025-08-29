@@ -1,0 +1,25 @@
+[33mcommit 4d2b5391eb7349f2329000b36086252efb4af227[m
+Author: Deepa <deepanshupatel9229@gmail.com>
+Date:   Fri Aug 29 09:07:02 2025 +0530
+
+    ai-chat working with llama
+
+API_MIGRATION_SUMMARY.md
+README.md
+fix-api-keys.js
+package-lock.json
+package.json
+setup-env.js
+src/app/api/chat/route.ts
+src/app/api/conversations/route.ts
+src/app/layout.tsx
+src/components/FileUpload.tsx
+src/components/chat-area.tsx
+src/components/chat-provider.tsx
+src/components/message-bubble.tsx
+src/components/sidebar.tsx
+src/lib/ai-config.ts
+src/lib/env.ts
+src/models/Conversation.ts
+test-env.js
+tsconfig.json

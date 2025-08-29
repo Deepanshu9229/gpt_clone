@@ -2,14 +2,18 @@ import { v2 as cloudinary } from 'cloudinary'
 import { connectDB } from '@/lib/mongodb'
 import { File } from '@/models/File'
 import mammoth from 'mammoth'
-import pdfParse from 'pdf-parse'
 import { auth } from '@clerk/nextjs/server'
 
-cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-})
+// Configure Cloudinary only if environment variables are available
+if (process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME && 
+    process.env.CLOUDINARY_API_KEY && 
+    process.env.CLOUDINARY_API_SECRET) {
+  cloudinary.config({
+    cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  })
+}
 
 export async function POST(request: Request) {
   const { fileUrl, fileName, fileType, fileSize } = await request.json()
@@ -26,18 +30,36 @@ export async function POST(request: Request) {
     let cloudinaryUrl = ''
 
     if (fileType === 'application/pdf') {
-      const pdfData = await pdfParse(fileBuffer)
-      extractedText = pdfData.text
+      try {
+        // Dynamic import to avoid build-time issues
+        const pdfParse = (await import('pdf-parse')).default
+        const pdfData = await pdfParse(fileBuffer)
+        extractedText = pdfData.text
+      } catch (pdfError) {
+        console.error('PDF parsing error:', pdfError)
+        extractedText = 'PDF content could not be extracted'
+      }
     } else if (fileType.includes('wordprocessingml')) {
-      const docResult = await mammoth.extractRawText({ buffer: fileBuffer })
-      extractedText = docResult.value
+      try {
+        const docResult = await mammoth.extractRawText({ buffer: fileBuffer })
+        extractedText = docResult.value
+      } catch (docError) {
+        console.error('Word document parsing error:', docError)
+        extractedText = 'Document content could not be extracted'
+      }
     } else if (fileType === 'text/plain') {
       extractedText = fileBuffer.toString('utf-8')
     } else if (fileType.startsWith('image/')) {
-      const uploadResult = await cloudinary.uploader.upload(fileUrl, {
-        resource_type: 'auto',
-      })
-      cloudinaryUrl = uploadResult.secure_url
+      try {
+        if (process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
+          const uploadResult = await cloudinary.uploader.upload(fileUrl, {
+            resource_type: 'auto',
+          })
+          cloudinaryUrl = uploadResult.secure_url
+        }
+      } catch (cloudinaryError) {
+        console.error('Cloudinary upload error:', cloudinaryError)
+      }
     }
 
     const fileRecord = new File({

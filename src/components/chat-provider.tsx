@@ -27,6 +27,7 @@ interface ChatContextType {
   createNewConversation: (model?: string) => Promise<void>
   selectConversation: (id: string) => void
   deleteConversation: (id: string) => Promise<void>
+  editMessage: (id: string, content: string) => Promise<void>
   isLoading: boolean
   error: string | null
 }
@@ -367,6 +368,57 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const editMessage = async (id: string, content: string) => {
+    if (!currentConversation) return;
+    
+    try {
+      setError(null);
+      
+      // Find the index of the message being edited
+      const messageIndex = currentConversation.messages.findIndex(msg => msg.id === id);
+      if (messageIndex === -1) return;
+      
+      // Remove all messages after the edited message (including AI responses)
+      const messagesToKeep = currentConversation.messages.slice(0, messageIndex + 1);
+      
+      // Update the edited message content
+      const updatedMessages = messagesToKeep.map(msg => 
+        msg.id === id ? { ...msg, content, edited: true } : msg
+      );
+
+      // Update conversation immediately in UI
+      const updatedConversation = {
+        ...currentConversation,
+        messages: updatedMessages,
+        updatedAt: new Date()
+      };
+
+      setCurrentConversation(updatedConversation);
+      setConversations(prev => 
+        prev.map(conv => 
+          conv.id === currentConversation.id ? updatedConversation : conv
+        )
+      );
+
+      // Save the edited message to database
+      const response = await fetch(`/api/conversations/${currentConversation.id}/messages`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId: id, newContent: content }),
+      });
+
+      if (response.ok) {
+        // Generate new AI response based on the edited message
+        setTimeout(() => addAIResponse(updatedConversation), 500);
+      } else {
+        throw new Error('Failed to save edited message');
+      }
+    } catch (error) {
+      console.error('Failed to edit message:', error);
+      setError('Failed to edit message');
+    }
+  };
+
   return (
     <ChatContext.Provider
       value={{
@@ -376,6 +428,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         createNewConversation,
         selectConversation,
         deleteConversation,
+        editMessage,
         isLoading,
         error,
       }}

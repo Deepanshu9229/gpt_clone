@@ -45,7 +45,9 @@ export async function POST(
       role,
       content,
       timestamp: new Date(),
-      attachments
+      attachments,
+      edited: false,
+      editHistory: []
     };
 
     conversation.messages.push(newMessage);
@@ -78,6 +80,97 @@ export async function POST(
     return NextResponse.json({
       success: false,
       error: 'Failed to add message'
+    }, { status: 500 });
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await auth();
+    const userId = session?.userId;
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id: conversationId } = params;
+    const { messageId, newContent } = await request.json();
+
+    if (!messageId || !newContent) {
+      return NextResponse.json({ 
+        success: false,
+        error: 'Message ID and new content are required' 
+      }, { status: 400 });
+    }
+
+    await connectDB();
+
+    const conversation = await Conversation.findOne({ 
+      _id: conversationId, 
+      userId 
+    });
+
+    if (!conversation) {
+      return NextResponse.json({ 
+        success: false,
+        error: 'Conversation not found' 
+      }, { status: 404 });
+    }
+
+    const messageIndex = conversation.messages.findIndex(
+      (m: any) => m.id === messageId
+    );
+
+    if (messageIndex === -1) {
+      return NextResponse.json({ 
+        success: false,
+        error: 'Message not found' 
+      }, { status: 404 });
+    }
+
+    const message = conversation.messages[messageIndex];
+    
+    // Store edit history
+    if (!message.editHistory) {
+      message.editHistory = [];
+    }
+    
+    message.editHistory.push({
+      content: message.content,
+      timestamp: message.timestamp
+    });
+
+    // Update message
+    message.content = newContent;
+    message.timestamp = new Date();
+    message.edited = true;
+
+    // Remove all messages after the edited message
+    conversation.messages = conversation.messages.slice(0, messageIndex + 1);
+
+    conversation.updatedAt = new Date();
+    await conversation.save();
+
+    return NextResponse.json({
+      success: true,
+      conversation: {
+        id: conversation._id.toString(),
+        title: conversation.title,
+        model: conversation.model,
+        createdAt: conversation.createdAt,
+        updatedAt: conversation.updatedAt,
+        messages: conversation.messages
+      }
+    });
+
+  } catch (error) {
+    console.error('Error editing message:', error);
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to edit message'
     }, { status: 500 });
   }
 }

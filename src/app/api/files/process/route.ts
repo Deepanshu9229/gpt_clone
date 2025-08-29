@@ -108,15 +108,26 @@ export async function POST(request: Request) {
           const workbook = XLSX.read(fileBuffer, { type: 'buffer' })
           const sheetName = workbook.SheetNames[0]
           const worksheet = workbook.Sheets[sheetName]
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][]
           
-          extractedText = `Spreadsheet with ${jsonData.length} rows and ${jsonData[0]?.length || 0} columns.\nHeaders: ${jsonData[0]?.join(', ')}\nFirst few rows: ${jsonData.slice(1, 4).map(row => row.join(', ')).join('\n')}`
-          metadata = {
-            sheets: workbook.SheetNames,
-            rows: jsonData.length,
-            columns: jsonData[0]?.length || 0
+          if (jsonData && jsonData.length > 0 && Array.isArray(jsonData[0])) {
+            const firstRow = jsonData[0] as any[]
+            extractedText = `Spreadsheet with ${jsonData.length} rows and ${firstRow.length || 0} columns.\nHeaders: ${firstRow.join(', ')}\nFirst few rows: ${jsonData.slice(1, 4).map((row: any[]) => Array.isArray(row) ? row.join(', ') : '').join('\n')}`
+            metadata = {
+              sheets: workbook.SheetNames,
+              rows: jsonData.length,
+              columns: firstRow.length || 0
+            }
+            summary = `Spreadsheet file with ${jsonData.length} rows processed`
+          } else {
+            extractedText = 'Spreadsheet file uploaded (no data found)'
+            metadata = {
+              sheets: workbook.SheetNames,
+              rows: 0,
+              columns: 0
+            }
+            summary = 'Spreadsheet file uploaded'
           }
-          summary = `Spreadsheet file with ${jsonData.length} rows processed`
         } catch (excelError) {
           console.error('Excel processing error:', excelError)
           extractedText = 'Spreadsheet file uploaded (processing failed)'
@@ -141,10 +152,10 @@ export async function POST(request: Request) {
         summary,
         processingStatus: 'completed'
       })
-    } catch (processingError) {
+    } catch (processingError: any) {
       // Update file record with error status
       fileRecord.processingStatus = 'failed'
-      fileRecord.errorMessage = processingError.message
+      fileRecord.errorMessage = processingError?.message || 'Unknown processing error'
       await fileRecord.save()
 
       return Response.json({ 

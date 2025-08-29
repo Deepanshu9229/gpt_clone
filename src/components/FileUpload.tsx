@@ -193,13 +193,14 @@ export function FileUpload({ attachedFiles, onFileAttach, onFileRemove }: FileUp
         setUploadProgress(prev => ({ ...prev, [fileInfo.uuid]: 100 }));
         
         const attachedFile = {
-          id: result.fileId,
+          id: result.fileId || fileInfo.uuid,
           fileName: fileInfo.name,
           fileType: fileTypeToSend || fileInfo.mimeType || 'unknown',
           fileUrl: fileInfo.cdnUrl,
           extractedText: result.extractedText,
           summary: result.summary,
-          processingStatus: result.processingStatus,
+          processingStatus: 'completed' as const,
+          size: fileInfo.size
         };
         console.log('📁 File attached successfully:', attachedFile);
         console.log('📁 Calling onFileAttach with:', attachedFile);
@@ -216,8 +217,9 @@ export function FileUpload({ attachedFiles, onFileAttach, onFileRemove }: FileUp
         fileName: fileInfo.name || 'Unknown file',
         fileType: fileInfo.mimeType || fileInfo.type || 'unknown',
         fileUrl: fileInfo.cdnUrl || '',
-        processingStatus: 'failed',
+        processingStatus: 'failed' as const,
         errorMessage: error.message,
+        size: fileInfo.size || 0
       });
     } finally {
       setIsUploading(false);

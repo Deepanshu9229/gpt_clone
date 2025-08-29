@@ -82,6 +82,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }
 
   const createNewConversation = async (model: string = 'claude-3-haiku') => {
+    if (!isSignedIn) {
+      alert('Please sign up to chat')
+      return
+    }
+
     try {
       setIsLoading(true)
       setError(null)

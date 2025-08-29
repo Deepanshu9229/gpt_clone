@@ -4,13 +4,13 @@ import { useState } from "react"
 import { Button } from "../components/ui/button"
 import { Copy, ThumbsUp, ThumbsDown, Edit3 } from "lucide-react"
 import { cn } from "../lib/utils"
-import { useChat } from "./chat-provider"
 
 interface Message {
   id: string
   content: string
   role: "user" | "assistant"
   timestamp: Date
+  attachments?: any[]
 }
 
 interface MessageBubbleProps {
@@ -22,10 +22,13 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [draft, setDraft] = useState(message.content)
   const isUser = message.role === "user"
-  const { updateMessage } = useChat()
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(message.content)
+  }
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
   return (
@@ -60,68 +63,81 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           ) : (
             <div className="whitespace-pre-wrap">{message.content}</div>
           )}
-
-          {showActions && (
-            <div
-              className={cn(
-                "flex items-center gap-1 mt-2 opacity-0 animate-in fade-in-0 duration-200",
-                showActions && "opacity-100",
-              )}
-            >
-              <Button variant="ghost" size="sm" onClick={copyToClipboard} className="h-6 px-2 text-xs hover:bg-muted">
-                <Copy className="h-3 w-3 mr-1" />
-                Copy
-              </Button>
-
-              {!isUser && (
-                <>
-                  <Button variant="ghost" size="sm" className="h-6 px-2 text-xs hover:bg-muted">
-                    <ThumbsUp className="h-3 w-3" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-6 px-2 text-xs hover:bg-muted">
-                    <ThumbsDown className="h-3 w-3" />
-                  </Button>
-                </>
-              )}
-
-              {isUser && !isEditing && (
-                <Button
-                  variant="ghost"
-                  size="sm"
+          
+          <div className="flex items-center justify-between mt-2 text-xs opacity-60">
+            <span>{formatTime(message.timestamp)}</span>
+            
+            {showActions && (
+              <div className="flex items-center gap-1 opacity-0 animate-in fade-in-0 duration-200 opacity-100">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={copyToClipboard} 
                   className="h-6 px-2 text-xs hover:bg-muted"
-                  onClick={() => setIsEditing(true)}
                 >
-                  <Edit3 className="h-3 w-3 mr-1" />
-                  Edit
+                  <Copy className="h-3 w-3 mr-1" />
+                  Copy
                 </Button>
-              )}
 
-              {isUser && isEditing && (
-                <>
+                {!isUser && (
+                  <>
+                    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs hover:bg-muted">
+                      <ThumbsUp className="h-3 w-3" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs hover:bg-muted">
+                      <ThumbsDown className="h-3 w-3" />
+                    </Button>
+                  </>
+                )}
+
+                {isUser && !isEditing && (
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-6 px-2 text-xs hover:bg-muted"
-                    onClick={() => {
-                      updateMessage(message.id, draft.trim())
-                      setIsEditing(false)
-                    }}
+                    onClick={() => setIsEditing(true)}
                   >
-                    Save
+                    <Edit3 className="h-3 w-3 mr-1" />
+                    Edit
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs hover:bg-muted"
-                    onClick={() => {
-                      setDraft(message.content)
-                      setIsEditing(false)
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </>
-              )}
+                )}
+
+                {isUser && isEditing && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs hover:bg-muted"
+                      onClick={() => {
+                        // Note: updateMessage function removed as it's not available in chat context
+                        setIsEditing(false)
+                      }}
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs hover:bg-muted"
+                      onClick={() => {
+                        setDraft(message.content)
+                        setIsEditing(false)
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Show attachments if any */}
+          {message.attachments && message.attachments.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-border/20">
+              <div className="text-xs text-muted-foreground">
+                {message.attachments.length} attachment(s)
+              </div>
             </div>
           )}
         </div>

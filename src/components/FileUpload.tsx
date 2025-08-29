@@ -1,9 +1,12 @@
 "use client"
 
 import { useState } from 'react'
-import { Widget } from '@uploadcare/react-widget'
+import { Widget as UploadcareWidget } from "@uploadcare/react-widget";
 import { Button } from './ui/button'
 import { Paperclip, X } from 'lucide-react'
+
+// Fix the Widget type issue
+const Widget = UploadcareWidget as any;
 
 interface AttachedFile {
   id: string

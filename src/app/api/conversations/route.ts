@@ -1,3 +1,4 @@
+// src/app/api/conversations/route.ts
 import { connectDB } from '@/lib/mongodb'
 import { Conversation } from '@/models/Conversation'
 import { auth } from '@clerk/nextjs/server'
@@ -12,18 +13,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Try to connect to MongoDB, but don't fail if it doesn't work
-    const db = await connectDB();
-    
-    if (!db) {
-      // MongoDB not available, return empty conversations (app will work offline)
-      console.log('⚠️ MongoDB not available, returning empty conversations for offline mode')
-      return NextResponse.json({ 
-        success: true,
-        conversations: [],
-        offline: true
-      });
-    }
+    await connectDB();
     
     const conversations = await Conversation.find({ userId })
       .sort({ updatedAt: -1 })
@@ -31,15 +21,14 @@ export async function GET() {
       .select('_id title model createdAt updatedAt messages')
       .lean();
 
-    // Transform the data to match frontend expectations
     const transformedConversations = conversations.map(conv => ({
-      id: typeof conv._id === 'object' && conv._id !== null && 'toString' in conv._id
-        ? (conv._id as { toString: () => string }).toString()
-        : String(conv._id ?? ''),
+      id: typeof conv._id === 'object' && conv._id !== null && typeof conv._id.toString === 'function'
+        ? conv._id.toString()
+        : String(conv._id),
       title: conv.title || 'New Chat',
-      model: conv.model || 'gpt-4',
-      createdAt: conv.createdAt ? new Date(conv.createdAt) : new Date(),
-      updatedAt: conv.updatedAt ? new Date(conv.updatedAt) : new Date(),
+      model: conv.model || 'claude-3-haiku',
+      createdAt: conv.createdAt,
+      updatedAt: conv.updatedAt,
       messages: conv.messages || []
     }));
 
@@ -50,12 +39,10 @@ export async function GET() {
 
   } catch (error) {
     console.error('Error fetching conversations:', error);
-    // On any error, return empty conversations so app works offline
     return NextResponse.json({ 
-      success: true,
-      conversations: [],
-      offline: true
-    });
+      success: false,
+      error: 'Failed to fetch conversations'
+    }, { status: 500 });
   }
 }
 
@@ -68,52 +55,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Try to connect to MongoDB
-    const db = await connectDB();
-    
-    if (!db) {
-      // MongoDB not available, create a local conversation
-      console.log('⚠️ MongoDB not available, creating local conversation')
-      return NextResponse.json({
-        success: true,
-        conversation: {
-          id: Date.now().toString(),
-          title: 'New Chat',
-          model: 'gpt-4',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          messages: []
-        },
-        local: true,
-        offline: true
-      }, { status: 201 });
-    }
+    await connectDB();
     
     const body = await request.json();
-    const { title = 'New Chat', model = 'gpt-4', messages = [] } = body;
-
-    // Validate input
-    if (!title || typeof title !== 'string') {
-      return NextResponse.json({ 
-        success: false,
-        error: 'Invalid title provided' 
-      }, { status: 400 });
-    }
+    const { title = 'New Chat', model = 'claude-3-haiku' } = body;
 
     const conversation = new Conversation({ 
       userId, 
       title: title.trim(), 
       model, 
-      messages,
+      messages: [],
       createdAt: new Date(),
       updatedAt: new Date()
     });
     
     const savedConversation = await conversation.save();
-
-    if (!savedConversation) {
-      throw new Error('Failed to save conversation to database');
-    }
 
     return NextResponse.json({
       success: true,
@@ -123,26 +79,15 @@ export async function POST(request: NextRequest) {
         model: savedConversation.model,
         createdAt: savedConversation.createdAt,
         updatedAt: savedConversation.updatedAt,
-        messages: savedConversation.messages || []
+        messages: []
       },
     }, { status: 201 });
 
   } catch (error) {
     console.error('Error creating conversation:', error);
-    
-    // On any error, create a local conversation
     return NextResponse.json({
-      success: true,
-      conversation: {
-        id: Date.now().toString(),
-        title: 'New Chat',
-        model: 'gpt-4',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        messages: []
-      },
-      local: true,
-      offline: true
-    }, { status: 201 });
+      success: false,
+      error: 'Failed to create conversation'
+    }, { status: 500 });
   }
 }

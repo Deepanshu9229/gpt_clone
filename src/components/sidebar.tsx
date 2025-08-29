@@ -51,7 +51,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
           <PanelLeft className="h-5 w-5" />
         </Button>
         <Button
-          onClick={createNewConversation}
+          onClick={() => createNewConversation()}
           disabled={isLoading}
           className="flex items-center gap-2 bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground disabled:opacity-50"
         >

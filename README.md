@@ -48,6 +48,12 @@ MONGODB_URI=mongodb://localhost:27017/gpt_clone
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
 CLERK_SECRET_KEY=your_clerk_secret_key
 
+# AI API Keys
+# Primary: Anthropic Claude (recommended)
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+# Fallback: OpenAI GPT
+OPENAI_API_KEY=your_openai_api_key_here
+
 # Next.js
 NEXTAUTH_SECRET=your_nextauth_secret
 NEXTAUTH_URL=http://localhost:3000

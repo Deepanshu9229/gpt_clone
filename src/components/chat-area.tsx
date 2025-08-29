@@ -9,6 +9,7 @@ import { PanelLeft, Send, ChevronDown, AlertTriangle } from "lucide-react"
 import { useChat } from "./chat-provider"
 import { MessageBubble } from "./message-bubble"
 import { FileUpload } from "./FileUpload"
+import { AI_MODELS, type AIModelId } from "@/lib/ai-config"
 
 interface ChatAreaProps {
   sidebarOpen: boolean
@@ -17,7 +18,7 @@ interface ChatAreaProps {
 
 export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
   const [input, setInput] = useState("")
-  const [selectedModel, setSelectedModel] = useState("GPT-4")
+  const [selectedModel, setSelectedModel] = useState<AIModelId>("llama3-8b")
   const { 
     currentConversation, 
     addMessage, 
@@ -35,7 +36,7 @@ export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
       setAttachedFiles([])
       
       try {
-        await addMessage(message, attachedFiles)
+        await addMessage(message, attachedFiles, selectedModel)
       } catch (error) {
         console.error('Failed to send message:', error)
       }
@@ -53,6 +54,10 @@ export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [currentConversation?.messages, isLoading])
 
+  const handleCreateConversation = () => {
+    createNewConversation(selectedModel)
+  }
+
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-background">
       {/* Header */}
@@ -66,14 +71,21 @@ export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-2">
-              {selectedModel}
+              {AI_MODELS[selectedModel]?.name || selectedModel}
               <ChevronDown className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => setSelectedModel("GPT-4")}>GPT-4</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSelectedModel("GPT-3.5")}>GPT-3.5</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSelectedModel("Claude")}>Claude</DropdownMenuItem>
+            {Object.entries(AI_MODELS).map(([modelId, model]) => (
+              <DropdownMenuItem 
+                key={modelId} 
+                onClick={() => setSelectedModel(modelId as AIModelId)}
+                className="flex flex-col items-start"
+              >
+                <span className="font-medium">{model.name}</span>
+                <span className="text-xs text-muted-foreground">{model.description}</span>
+              </DropdownMenuItem>
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -97,7 +109,7 @@ export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
               <p>Start a conversation by typing a message below.</p>
               {!currentConversation && (
                 <Button 
-                  onClick={createNewConversation} 
+                  onClick={handleCreateConversation} 
                   className="mt-4"
                   disabled={isLoading}
                 >
@@ -139,43 +151,43 @@ export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
       </ScrollArea>
 
       {/* Input Area */}
-      <div className="p-4 border-t border-border">
-        <div className="max-w-4xl mx-auto">
-          <div className="relative">
-            <div className="flex items-end gap-2 bg-input rounded-lg border border-border p-2">
-              <FileUpload
-                attachedFiles={attachedFiles}
-                onFileAttach={(file) => setAttachedFiles((prev) => [...prev, file])}
-                onFileRemove={(fileId) => setAttachedFiles((prev) => prev.filter((f) => f.id !== fileId))}
-              />
-
-              <Textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Message ChatGPT..."
-                className="flex-1 min-h-[24px] max-h-32 resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                rows={1}
-                disabled={isLoading}
-              />
-
-              <Button
-                onClick={handleSend}
-                disabled={!input.trim() || isLoading}
-                size="icon"
-                variant="default"
-                className="rounded-full"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
+      {currentConversation && (
+        <div className="p-4 border-t border-border">
+          <div className="flex gap-2">
+            <FileUpload 
+              attachedFiles={attachedFiles}
+              onFileAttach={(file) => setAttachedFiles(prev => [...prev, file])}
+              onFileRemove={(fileId) => setAttachedFiles(prev => prev.filter(f => f.id !== fileId))}
+            />
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder="Type your message..."
+              className="flex-1 min-h-[60px] resize-none"
+              disabled={isLoading}
+            />
+            <Button 
+              onClick={handleSend} 
+              disabled={!input.trim() || isLoading}
+              size="icon"
+              className="self-end"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          {attachedFiles.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {attachedFiles.map((file, index) => (
+                <div key={index} className="text-xs bg-muted px-2 py-1 rounded">
+                  {file.name}
+                </div>
+              ))}
             </div>
-          </div>
-
-          <div className="text-xs text-muted-foreground text-center mt-2">
-            ChatGPT can make mistakes. Check important info.
-          </div>
+          )}
         </div>
-      </div>
+      )}
     </div>
   )
 }

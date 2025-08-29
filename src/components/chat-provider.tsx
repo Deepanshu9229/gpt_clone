@@ -23,8 +23,8 @@ interface Conversation {
 interface ChatContextType {
   conversations: Conversation[]
   currentConversation: Conversation | null
-  addMessage: (content: string, attachments?: any[]) => Promise<void>
-  createNewConversation: () => Promise<void>
+  addMessage: (content: string, attachments?: any[], model?: string) => Promise<void>
+  createNewConversation: (model?: string) => Promise<void>
   selectConversation: (id: string) => void
   deleteConversation: (id: string) => Promise<void>
   isLoading: boolean
@@ -61,7 +61,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           ...conv,
           createdAt: new Date(conv.createdAt),
           updatedAt: new Date(conv.updatedAt),
-          model: conv.model || 'gpt-4',
+          model: conv.model || 'claude-3-haiku',
           messages: conv.messages.map((msg: any) => ({
             ...msg,
             timestamp: new Date(msg.timestamp)
@@ -81,7 +81,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const createNewConversation = async () => {
+  const createNewConversation = async (model: string = 'claude-3-haiku') => {
     try {
       setIsLoading(true)
       setError(null)
@@ -89,7 +89,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const response = await fetch('/api/conversations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: 'New Chat' }),
+        body: JSON.stringify({ title: 'New Chat', model }),
       })
 
       const data = await response.json()
@@ -99,7 +99,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           ...data.conversation,
           createdAt: new Date(data.conversation.createdAt),
           updatedAt: new Date(data.conversation.updatedAt),
-          model: data.conversation.model || 'gpt-4',
+          model: data.conversation.model || model,
           messages: []
         }
         
@@ -116,11 +116,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const addMessage = async (content: string, attachments: any[] = []) => {
+  const addMessage = async (content: string, attachments: any[] = [], model?: string) => {
     if (!currentConversation) {
-      await createNewConversation()
+      await createNewConversation(model)
       // Retry after creating conversation
-      setTimeout(() => addMessage(content, attachments), 500)
+      setTimeout(() => addMessage(content, attachments, model), 500)
       return
     }
 
@@ -142,7 +142,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         messages: [...currentConversation.messages, userMessage],
         updatedAt: new Date(),
         title: currentConversation.messages.length === 0 ? content.slice(0, 30) + (content.length > 30 ? "..." : "") : currentConversation.title,
-        model: currentConversation.model || 'gpt-4'
+        model: model || currentConversation.model || 'claude-3-haiku'
       }
 
       setCurrentConversation(updatedConversation)
@@ -169,7 +169,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           const merged = {
             ...conv,
             updatedAt: new Date(data.conversation.updatedAt),
-            model: data.conversation.model || conv.model || 'gpt-4',
+            model: data.conversation.model || conv.model || 'claude-3-haiku',
             messages: serverMsgs.length >= conv.messages.length
               ? serverMsgs.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }))
               : conv.messages
@@ -222,7 +222,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       console.log('🤖 Calling AI API with:', {
         messages: [{ role: 'user', content: lastUserMessage.content }],
-        model: conversation.model || 'gpt-4'
+        model: conversation.model || 'claude-3-haiku'
       });
 
       // Call the AI API endpoint
@@ -233,7 +233,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           messages: [
             { role: 'user', content: lastUserMessage.content }
           ],
-          model: conversation.model || 'gpt-4'
+          model: conversation.model || 'claude-3-haiku'
         }),
       })
 
@@ -287,7 +287,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           ...data.conversation,
           createdAt: new Date(data.conversation.createdAt),
           updatedAt: new Date(data.conversation.updatedAt),
-          model: data.conversation.model || conversation.model || 'gpt-4',
+          model: data.conversation.model || conversation.model || 'claude-3-haiku',
           messages: data.conversation.messages.map((msg: any) => ({
             ...msg,
             timestamp: new Date(msg.timestamp)

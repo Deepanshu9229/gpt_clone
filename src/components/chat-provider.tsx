@@ -8,7 +8,14 @@ interface Message {
   content: string
   role: "user" | "assistant"
   timestamp: Date
-  attachments?: any[]
+  attachments?: Array<{
+    fileName: string
+    fileType: string
+    fileUrl: string
+    extractedText?: string
+    size?: number
+    summary?: string
+  }>
 }
 
 interface Conversation {
@@ -23,7 +30,14 @@ interface Conversation {
 interface ChatContextType {
   conversations: Conversation[]
   currentConversation: Conversation | null
-  addMessage: (content: string, attachments?: any[], model?: string) => Promise<void>
+  addMessage: (content: string, attachments?: Array<{
+    fileName: string
+    fileType: string
+    fileUrl: string
+    extractedText?: string
+    size?: number
+    summary?: string
+  }>, model?: string) => Promise<void>
   createNewConversation: (model?: string) => Promise<void>
   selectConversation: (id: string) => void
   deleteConversation: (id: string) => Promise<void>
@@ -65,7 +79,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           model: conv.model || 'claude-3-haiku',
           messages: conv.messages.map((msg: any) => ({
             ...msg,
-            timestamp: new Date(msg.timestamp)
+            timestamp: new Date(msg.timestamp),
+            attachments: msg.attachments || []
           }))
         }))
         
@@ -122,7 +137,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const addMessage = async (content: string, attachments: any[] = [], model?: string) => {
+  const addMessage = async (content: string, attachments: Array<{
+    fileName: string
+    fileType: string
+    fileUrl: string
+    extractedText?: string
+    size?: number
+    summary?: string
+  }> = [], model?: string) => {
     if (!currentConversation) {
       await createNewConversation(model)
       // Retry after creating conversation
@@ -141,6 +163,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         timestamp: new Date(),
         attachments
       }
+      
+      console.log('🔍 Created user message with attachments:', userMessage.attachments);
 
       // Update UI immediately
       const updatedConversation = {
@@ -150,6 +174,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         title: currentConversation.messages.length === 0 ? content.slice(0, 30) + (content.length > 30 ? "..." : "") : currentConversation.title,
         model: model || currentConversation.model || 'claude-3-haiku'
       }
+      
+      console.log('🔍 Updated conversation messages:', updatedConversation.messages);
+      console.log('🔍 Last message attachments:', updatedConversation.messages[updatedConversation.messages.length - 1]?.attachments);
 
       setCurrentConversation(updatedConversation)
       setConversations(prev => 
@@ -177,14 +204,18 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             updatedAt: new Date(data.conversation.updatedAt),
             model: data.conversation.model || conv.model || 'claude-3-haiku',
             messages: serverMsgs.length >= conv.messages.length
-              ? serverMsgs.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }))
+              ? serverMsgs.map((m: any) => ({ 
+                  ...m, 
+                  timestamp: new Date(m.timestamp),
+                  attachments: m.attachments || []
+                }))
               : conv.messages
           }
           return merged
         }))
         
-        // Add AI response after user message is saved
-        setTimeout(() => addAIResponse(updatedConversation), 1000)
+              // Add AI response after user message is saved
+        setTimeout(() => addAIResponse(updatedConversation, attachments), 1000)
       }
     } catch (error) {
       console.error('Failed to add message:', error)
@@ -193,13 +224,35 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const addAIResponse = async (conversation: Conversation) => {
+  const addAIResponse = async (conversation: Conversation, attachments: Array<{
+    fileName: string
+    fileType: string
+    fileUrl: string
+    extractedText?: string
+    size?: number
+    summary?: string
+  }> = []) => {
     try {
       setIsLoading(true)
       
       console.log('🔍 Debugging addAIResponse - conversation:', conversation);
       console.log('🔍 Conversation messages:', conversation.messages);
       console.log('🔍 Messages length:', conversation.messages?.length);
+      console.log('🔍 Attachments:', attachments);
+      
+      // Get attachments from the last user message if not provided
+      let fileAttachments = attachments;
+      if (fileAttachments.length === 0) {
+        const userMessages = conversation.messages?.filter(msg => msg.role === 'user') || [];
+        const lastUserMessage = userMessages[userMessages.length - 1];
+        if (lastUserMessage && lastUserMessage.attachments) {
+          fileAttachments = lastUserMessage.attachments;
+          console.log('🔍 Found attachments in last user message:', lastUserMessage.attachments);
+        } else {
+          console.log('🔍 No attachments found in last user message');
+        }
+      }
+      console.log('🔍 Final file attachments to use:', fileAttachments);
       
       // Get the last user message to send to AI
       console.log('🔍 Filtering messages by role...');
@@ -226,9 +279,29 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         return
       }
 
+      // Prepare file context for AI
+      let fileContext = '';
+      if (fileAttachments && fileAttachments.length > 0) {
+        fileContext = '\n\n**Attached Files:**\n';
+        for (const file of fileAttachments) {
+          if (file.extractedText) {
+            fileContext += `\n**${file.fileName}** (${file.fileType}):\n${file.extractedText.slice(0, 1000)}${file.extractedText.length > 1000 ? '...' : ''}\n`;
+          } else if (file.summary) {
+            fileContext += `\n**${file.fileName}** (${file.fileType}): ${file.summary}\n`;
+          } else {
+            fileContext += `\n**${file.fileName}** (${file.fileType}): File uploaded successfully\n`;
+          }
+        }
+      }
+
+      const messageWithContext = lastUserMessage.content + fileContext;
+      console.log('🤖 Message content:', lastUserMessage.content);
+      console.log('🤖 File context:', fileContext);
+      console.log('🤖 Combined message:', messageWithContext);
       console.log('🤖 Calling AI API with:', {
-        messages: [{ role: 'user', content: lastUserMessage.content }],
-        model: conversation.model || 'claude-3-haiku'
+        messages: [{ role: 'user', content: messageWithContext }],
+        model: conversation.model || 'claude-3-haiku',
+        hasFiles: fileAttachments.length > 0
       });
 
       // Call the AI API endpoint
@@ -237,7 +310,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [
-            { role: 'user', content: lastUserMessage.content }
+            { role: 'user', content: messageWithContext }
           ],
           model: conversation.model || 'claude-3-haiku'
         }),
@@ -296,7 +369,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           model: data.conversation.model || conversation.model || 'claude-3-haiku',
           messages: data.conversation.messages.map((msg: any) => ({
             ...msg,
-            timestamp: new Date(msg.timestamp)
+            timestamp: new Date(msg.timestamp),
+            attachments: msg.attachments || []
           }))
         }
         
@@ -409,7 +483,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         // Generate new AI response based on the edited message
-        setTimeout(() => addAIResponse(updatedConversation), 500);
+        setTimeout(() => addAIResponse(updatedConversation, []), 500);
       } else {
         throw new Error('Failed to save edited message');
       }

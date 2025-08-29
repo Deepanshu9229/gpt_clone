@@ -31,14 +31,36 @@ export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
 
   const handleSend = async () => {
     if (input.trim() && !isLoading) {
-      const message = input.trim()
-      setInput("")
-      setAttachedFiles([])
+              const message = input.trim()
+        const filesToSend = [...attachedFiles] // Create a copy of the files
       
       try {
-        await addMessage(message, attachedFiles, selectedModel)
+        console.log('📤 Sending message with files:', filesToSend);
+        console.log('📤 Files count:', filesToSend.length);
+        console.log('📤 Files details:', filesToSend.map(f => ({ 
+          fileName: f.fileName, 
+          fileType: f.fileType, 
+          extractedText: f.extractedText 
+        })));
+        
+        // Transform files to match the expected attachment format
+        const transformedFiles = filesToSend.map(f => ({
+          fileName: f.fileName,
+          fileType: f.fileType,
+          fileUrl: f.fileUrl,
+          extractedText: f.extractedText,
+          size: f.size || 0,
+          summary: f.summary
+        }));
+        
+        await addMessage(message, transformedFiles, selectedModel)
+        
+        // Clear input and files only after successful message send
+        setInput("")
+        setAttachedFiles([])
       } catch (error) {
         console.error('Failed to send message:', error)
+        // Don't clear files on error, let user retry
       }
     }
   }
@@ -156,8 +178,19 @@ export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
           <div className="flex gap-2">
             <FileUpload 
               attachedFiles={attachedFiles}
-              onFileAttach={(file) => setAttachedFiles(prev => [...prev, file])}
-              onFileRemove={(fileId) => setAttachedFiles(prev => prev.filter(f => f.id !== fileId))}
+              onFileAttach={(file) => {
+                console.log('📁 Adding file to attachedFiles:', file);
+                console.log('📁 Previous attachedFiles state:', attachedFiles);
+                setAttachedFiles(prev => {
+                  const newState = [...prev, file];
+                  console.log('📁 New attachedFiles state:', newState);
+                  return newState;
+                });
+              }}
+              onFileRemove={(fileId) => {
+                console.log('📁 Removing file from attachedFiles:', fileId);
+                setAttachedFiles(prev => prev.filter(f => f.id !== fileId));
+              }}
             />
             <Textarea
               value={input}
@@ -175,13 +208,36 @@ export function ChatArea({ sidebarOpen, onToggleSidebar }: ChatAreaProps) {
             >
               <Send className="h-4 w-4" />
             </Button>
+            
+            {/* Debug button to test file attachments */}
+            {attachedFiles.length > 0 && (
+              <Button 
+                onClick={() => {
+                  console.log('🔍 Debug: Current attachedFiles state:', attachedFiles);
+                  console.log('🔍 Debug: Files details:', attachedFiles.map(f => ({
+                    id: f.id,
+                    fileName: f.fileName,
+                    fileType: f.fileType,
+                    extractedText: f.extractedText?.slice(0, 100),
+                    summary: f.summary
+                  })));
+                }}
+                variant="outline"
+                size="sm"
+                className="self-end"
+              >
+                Debug Files
+              </Button>
+            )}
           </div>
           
           {attachedFiles.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
               {attachedFiles.map((file, index) => (
                 <div key={index} className="text-xs bg-muted px-2 py-1 rounded">
-                  {file.name}
+                  {file.fileName}
+                  {file.extractedText && <span className="ml-2 text-green-600">✓ Text: {file.extractedText.slice(0, 50)}...</span>}
+                  {file.summary && <span className="ml-2 text-blue-600">✓ Summary: {file.summary}</span>}
                 </div>
               ))}
             </div>

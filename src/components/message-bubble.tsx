@@ -12,7 +12,14 @@ interface Message {
   content: string
   role: "user" | "assistant"
   timestamp: Date
-  attachments?: any[]
+  attachments?: Array<{
+    fileName: string
+    fileType: string
+    fileUrl: string
+    extractedText?: string
+    size?: number
+    summary?: string
+  }>
   edited?: boolean
   editHistory?: Array<{ content: string; timestamp: Date }>
 }
@@ -61,14 +68,16 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     setIsEditing(false)
   }
 
-  const getFileIcon = (fileType: string) => {
+  const getFileIcon = (fileType: string | undefined) => {
+    if (!fileType) return <File className="h-4 w-4" />
     if (fileType.startsWith('image/')) return <Image className="h-4 w-4" />
     if (fileType.includes('pdf')) return <FileText className="h-4 w-4" />
     if (fileType.includes('word') || fileType.includes('document')) return <FileText className="h-4 w-4" />
     return <File className="h-4 w-4" />
   }
 
-  const getFileSize = (bytes: number) => {
+  const getFileSize = (bytes: number | undefined) => {
+    if (!bytes || bytes < 0) return 'Unknown size'
     if (bytes < 1024) return `${bytes} B`
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
@@ -183,11 +192,11 @@ export function MessageBubble({ message }: MessageBubbleProps) {
               <div className="space-y-2">
                 {message.attachments.map((attachment, index) => (
                   <div key={index} className="flex items-center gap-2 p-2 bg-muted/30 rounded-md">
-                    {getFileIcon(attachment.type)}
+                    {getFileIcon(attachment.fileType)}
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium truncate">{attachment.name}</div>
+                      <div className="text-xs font-medium truncate">{attachment.fileName || 'Unknown file'}</div>
                       <div className="text-xs text-muted-foreground">
-                        {getFileSize(attachment.size)} • {attachment.type}
+                        {getFileSize(attachment.size)} • {attachment.fileType || 'Unknown type'}
                       </div>
                     </div>
                     {attachment.extractedText && (

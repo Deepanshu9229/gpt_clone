@@ -1,53 +1,66 @@
 const fs = require('fs');
 const path = require('path');
 
+console.log('🚀 Setting up environment for GPT Clone with File Upload System...\n');
+
+// Check if .env file exists
 const envPath = path.join(process.cwd(), '.env.local');
+const envExists = fs.existsSync(envPath);
 
-// Check if .env.local already exists
-if (fs.existsSync(envPath)) {
-  console.log('⚠️  .env.local already exists. Skipping setup.');
-  console.log('If you need to update it, please edit the file manually.');
-  process.exit(0);
-}
+if (envExists) {
+  console.log('📁 .env.local file already exists');
+  const envContent = fs.readFileSync(envPath, 'utf8');
+  
+  // Check for required services
+  const hasUploadcare = envContent.includes('NEXT_PUBLIC_UPLOADCARE_PUBLIC_KEY');
+  const hasCloudinary = envContent.includes('NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME');
+  const hasAI = envContent.includes('ANTHROPIC_API_KEY') || envContent.includes('OPENAI_API_KEY');
+  
+  console.log(`📤 Uploadcare: ${hasUploadcare ? '✅ Configured' : '❌ Missing'}`);
+  console.log(`☁️ Cloudinary: ${hasCloudinary ? '✅ Configured' : '❌ Missing'}`);
+  console.log(`🤖 AI Service: ${hasAI ? '✅ Configured' : '❌ Missing'}`);
+  
+  if (!hasUploadcare || !hasCloudinary || !hasAI) {
+    console.log('\n⚠️ Some required services are not configured. Please add the missing environment variables.');
+  }
+} else {
+  console.log('📁 Creating .env.local file...');
+  
+  const envTemplate = `# AI Service Configuration
+# Choose one of the following:
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+# OPENAI_API_KEY=your_openai_api_key_here
+# GROQ_API_KEY=your_groq_api_key_here
 
-// Environment variables template
-const envTemplate = `# Clerk Authentication
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_your_clerk_publishable_key_here
-CLERK_SECRET_KEY=sk_test_your_clerk_secret_key_here
-
-# Groq AI API Key (Primary - Fastest)
-GROQ_API_KEY=gsk_your_groq_api_key_here
-
-# OpenAI API Key (Fallback)
-OPENAI_API_KEY=sk-your_openai_api_key_here
-
-# Anthropic API Key (Secondary Fallback)
-ANTHROPIC_API_KEY=sk-ant-your_anthropic_api_key_here
-
-# MongoDB Connection
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database?retryWrites=true&w=majority
-
-# Uploadcare (File Uploads)
+# File Upload Services
 NEXT_PUBLIC_UPLOADCARE_PUBLIC_KEY=your_uploadcare_public_key_here
+CLOUDINARY_API_KEY=your_cloudinary_api_key_here
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret_here
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name_here
 
-# Environment
-NODE_ENV=development
+# Database
+MONGODB_URI=your_mongodb_connection_string_here
+
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key_here
+CLERK_SECRET_KEY=your_clerk_secret_key_here
 `;
 
-try {
   fs.writeFileSync(envPath, envTemplate);
   console.log('✅ .env.local file created successfully!');
-  console.log('');
-  console.log('📝 Please update the following values in .env.local:');
-  console.log('   - Clerk API keys (from https://dashboard.clerk.com)');
-  console.log('   - Groq API key (from https://console.groq.com/keys)');
-  console.log('   - OpenAI API key (from https://platform.openai.com/api-keys)');
-  console.log('   - Anthropic API key (from https://console.anthropic.com)');
-  console.log('   - MongoDB connection string');
-  console.log('   - Uploadcare public key (optional)');
-  console.log('');
-  console.log('🚀 After updating the keys, run: npm run dev');
-} catch (error) {
-  console.error('❌ Error creating .env.local:', error.message);
-  process.exit(1);
 }
+
+console.log('\n📋 Setup Instructions:');
+console.log('1. Get your Uploadcare public key from: https://uploadcare.com/dashboard/');
+console.log('2. Get your Cloudinary credentials from: https://cloudinary.com/console');
+console.log('3. Get your AI service API key (Anthropic, OpenAI, or Groq)');
+console.log('4. Update the .env.local file with your actual keys');
+console.log('5. Run "npm run dev" to start the development server');
+
+console.log('\n🔧 File Upload Features:');
+console.log('• Uploadcare: Handles file uploads with drag & drop');
+console.log('• Cloudinary: Secure file storage and image optimization');
+console.log('• AI Integration: AI can read and analyze uploaded files');
+console.log('• Supported formats: PDF, Word, Excel, CSV, Images, Text');
+
+console.log('\n✨ Your file upload system is ready to go!');

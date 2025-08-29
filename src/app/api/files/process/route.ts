@@ -50,6 +50,7 @@ export async function POST(request: Request) {
     let extractedText = ''
     let cloudinaryUrl = ''
     let metadata = {}
+    let summary = ''
 
     try {
       if (fileType === 'application/pdf') {
@@ -59,19 +60,25 @@ export async function POST(request: Request) {
         extractedText = pdfData.text
         metadata = {
           pages: pdfData.numpages,
-          encoding: 'utf-8'
+          encoding: 'utf-8',
+          info: pdfData.info || {}
         }
+        summary = `PDF document with ${pdfData.numpages} pages. ${extractedText.slice(0, 200)}...`
       } else if (fileType.includes('wordprocessingml') || fileType.includes('vnd.openxmlformats-officedocument.wordprocessingml')) {
         const docResult = await mammoth.extractRawText({ buffer: fileBuffer })
         extractedText = docResult.value
         metadata = {
-          encoding: 'utf-8'
+          encoding: 'utf-8',
+          warnings: docResult.messages || []
         }
+        summary = `Word document: ${extractedText.slice(0, 200)}...`
       } else if (fileType === 'text/plain') {
         extractedText = fileBuffer.toString('utf-8')
         metadata = {
-          encoding: 'utf-8'
+          encoding: 'utf-8',
+          lines: extractedText.split('\n').length
         }
+        summary = `Text file with ${extractedText.split('\n').length} lines: ${extractedText.slice(0, 200)}...`
       } else if (fileType.startsWith('image/')) {
         try {
           if (process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
@@ -85,11 +92,35 @@ export async function POST(request: Request) {
             metadata = {
               width: uploadResult.width,
               height: uploadResult.height,
-              encoding: 'auto'
+              format: uploadResult.format,
+              size: uploadResult.bytes
             }
+            summary = `Image file (${uploadResult.width}x${uploadResult.height}) uploaded to Cloudinary`
           }
         } catch (cloudinaryError) {
           console.error('Cloudinary upload error:', cloudinaryError)
+          summary = `Image file uploaded successfully`
+        }
+      } else if (fileType.includes('csv') || fileType.includes('excel') || fileType.includes('spreadsheet')) {
+        // Handle CSV and Excel files
+        try {
+          const XLSX = (await import('xlsx')).default
+          const workbook = XLSX.read(fileBuffer, { type: 'buffer' })
+          const sheetName = workbook.SheetNames[0]
+          const worksheet = workbook.Sheets[sheetName]
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+          
+          extractedText = `Spreadsheet with ${jsonData.length} rows and ${jsonData[0]?.length || 0} columns.\nHeaders: ${jsonData[0]?.join(', ')}\nFirst few rows: ${jsonData.slice(1, 4).map(row => row.join(', ')).join('\n')}`
+          metadata = {
+            sheets: workbook.SheetNames,
+            rows: jsonData.length,
+            columns: jsonData[0]?.length || 0
+          }
+          summary = `Spreadsheet file with ${jsonData.length} rows processed`
+        } catch (excelError) {
+          console.error('Excel processing error:', excelError)
+          extractedText = 'Spreadsheet file uploaded (processing failed)'
+          summary = 'Spreadsheet file uploaded'
         }
       }
 
@@ -97,6 +128,7 @@ export async function POST(request: Request) {
       fileRecord.extractedText = extractedText
       fileRecord.cloudinaryUrl = cloudinaryUrl
       fileRecord.metadata = metadata
+      fileRecord.summary = summary
       fileRecord.processingStatus = 'completed'
       await fileRecord.save()
 
@@ -106,6 +138,7 @@ export async function POST(request: Request) {
         extractedText, 
         cloudinaryUrl,
         metadata,
+        summary,
         processingStatus: 'completed'
       })
     } catch (processingError) {

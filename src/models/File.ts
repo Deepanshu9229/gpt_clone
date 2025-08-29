@@ -9,6 +9,7 @@ const FileSchema = new mongoose.Schema({
   uploadcareUrl: { type: String, required: true },
   cloudinaryUrl: String,
   extractedText: String,
+  summary: String,
   processingStatus: { 
     type: String, 
     enum: ['pending', 'processing', 'completed', 'failed'], 
@@ -20,7 +21,12 @@ const FileSchema = new mongoose.Schema({
     height: Number,
     pages: Number,
     duration: Number,
-    encoding: String
+    encoding: String,
+    sheets: [String],
+    rows: Number,
+    columns: Number,
+    info: mongoose.Schema.Types.Mixed,
+    warnings: [String]
   },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
